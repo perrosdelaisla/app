@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#111111">
+    <title>Cliente — Admin Perros de la Isla</title>
+    <link rel="stylesheet" href="./styles.css?v=37">
+    <link rel="stylesheet" href="./jaime.css?v=8">
+</head>
+<body>
+
+    <section class="screen" id="screen-loading" aria-busy="true">
+        <main class="centered">
+            <div class="logo">
+                <div class="logo-circle"><img src="../img/logo.png" alt="" class="logo-circle__img"></div>
+                <span class="logo-text">PDLI</span>
+            </div>
+            <p class="muted">Cargando…</p>
+        </main>
+    </section>
+
+    <section class="screen" id="screen-error" hidden>
+        <header class="header header--with-back">
+            <a class="btn-back" href="./index.html" aria-label="Volver a la lista">← Volver</a>
+            <h2 class="header-title">Cliente</h2>
+            <span class="header-spacer"></span>
+        </header>
+        <main class="centered">
+            <p class="error-state" id="error-message">No se pudo cargar el cliente.</p>
+            <a class="btn btn-primary" href="./index.html">Volver a la lista</a>
+        </main>
+    </section>
+
+    <section class="screen" id="screen-cliente" hidden>
+        <header class="header header--with-back">
+            <a class="btn-back" href="./index.html" aria-label="Volver a la lista">← Volver</a>
+            <h2 class="header-title">Detalle del cliente</h2>
+            <span class="header-spacer"></span>
+        </header>
+        <main class="detalle-main">
+            <section class="detalle-cabecera">
+                <h1 class="detalle-nombre" id="cliente-nombre">…</h1>
+                <div class="estado-selector" id="estado-selector" role="radiogroup" aria-label="Estado del cliente">
+                    <button type="button" class="estado-pill" data-estado="consulta" role="radio" aria-checked="false">
+                        <span class="estado-pill__dot"></span>
+                        <span class="estado-pill__label">Consulta</span>
+                    </button>
+                    <button type="button" class="estado-pill" data-estado="activo" role="radio" aria-checked="false">
+                        <span class="estado-pill__dot"></span>
+                        <span class="estado-pill__label">Activo</span>
+                    </button>
+                    <button type="button" class="estado-pill" data-estado="veterano" role="radio" aria-checked="false">
+                        <span class="estado-pill__dot"></span>
+                        <span class="estado-pill__label">Veterano</span>
+                    </button>
+                    <button type="button" class="estado-pill" data-estado="ex_cliente" role="radio" aria-checked="false">
+                        <span class="estado-pill__dot"></span>
+                        <span class="estado-pill__label">Ex cliente</span>
+                    </button>
+                </div>
+                <button type="button" class="btn-invitar" id="btn-invitar">Invitar a la app</button>
+                <dl class="detalle-campos">
+                    <div class="campo">
+                        <dt>Teléfono</dt>
+                        <dd id="cliente-telefono">—</dd>
+                    </div>
+                    <div class="campo">
+                        <dt>Email</dt>
+                        <dd id="cliente-email">—</dd>
+                    </div>
+                    <div class="campo">
+                        <dt>Zona</dt>
+                        <dd id="cliente-zona">—</dd>
+                    </div>
+                    <div class="campo">
+                        <dt>Ubicación (Google Maps)</dt>
+                        <dd>
+                            <div id="cli-maps-view" style="display:flex;gap:8px;flex-wrap:wrap">
+                                <button type="button" class="btn-secondary" id="cli-maps-abrir" hidden>📍 Abrir en Maps</button>
+                                <button type="button" class="btn-secondary" id="cli-maps-editar" hidden>Editar</button>
+                                <button type="button" class="btn-secondary" id="cli-maps-anadir" hidden>Añadir enlace</button>
+                            </div>
+                            <div id="cli-maps-edit" hidden>
+                                <input type="text" id="cli-maps-input" maxlength="500" placeholder="Pega aquí el enlace de Compartir de Google Maps" style="width:100%;box-sizing:border-box">
+                                <div style="margin-top:8px;display:flex;gap:8px">
+                                    <button type="button" class="btn-secondary" id="cli-maps-guardar">Guardar</button>
+                                    <button type="button" class="btn-secondary" id="cli-maps-cancelar">Cancelar</button>
+                                </div>
+                            </div>
+                        </dd>
+                    </div>
+                    <div class="campo">
+                        <dt>Cliente desde</dt>
+                        <dd id="cliente-desde">—</dd>
+                    </div>
+                </dl>
+
+                <div class="admin-widget admin-widget--pack">
+                    <label class="admin-widget__label" for="cliente-pack-actual">Pack actual</label>
+                    <div class="admin-widget__row">
+                        <input type="number" id="cliente-pack-actual" min="0" step="1" placeholder="—">
+                        <button type="button" class="btn-secondary" id="cliente-pack-guardar">Guardar</button>
+                    </div>
+                    <p class="admin-widget__hint">Número de clases que pagó este cliente en su pack actual. Vacío = sin pack registrado.</p>
+                    <p class="admin-widget__hint" style="margin-top:8px">Clases realizadas: <strong id="cliente-clases-realizadas">—</strong></p>
+                    <label class="admin-widget__check" style="margin-top:12px;display:flex;gap:8px;align-items:center;cursor:pointer">
+                        <input type="checkbox" id="cli-clase-extra"> Habilitar próxima clase (seña recibida)
+                        <span id="cli-clase-extra-feedback" class="admin-widget__hint" style="margin:0"></span>
+                    </label>
+                    <p class="admin-widget__hint">El cliente podrá elegir UNA clase más. Se limpia solo cuando esa clase pase a realizada.</p>
+                </div>
+            </section>
+
+            <section class="detalle-seccion" aria-labelledby="perros-titulo">
+                <h2 id="perros-titulo" class="seccion-titulo">Perros</h2>
+                <ul id="perros-lista" class="perros-lista"></ul>
+                <p class="empty-state" id="perros-empty" hidden>Aún no hay perros registrados.</p>
+            </section>
+
+            <section class="detalle-seccion" aria-labelledby="miembros-titulo">
+                <h2 id="miembros-titulo" class="seccion-titulo">Quién puede entrar a la app</h2>
+                <ul id="miembros-lista" class="miembros-lista"></ul>
+                <p class="empty-state" id="miembros-empty" hidden>Esta cuenta aún no tiene a nadie con acceso a la app.</p>
+            </section>
+
+            <section class="admin-mensajes" id="admin-mensajes" hidden>
+                <div class="admin-mensajes__head">
+                    <h2 class="admin-mensajes__titulo">Mensajes del cliente</h2>
+                    <span class="admin-mensajes__count" id="admin-mensajes-count">
+                        <span class="num is-cero">0</span> nuevos
+                    </span>
+                </div>
+                <div id="admin-mensajes-feed">
+                    <!-- Renderiza JS -->
+                </div>
+                <div class="admin-responder">
+                    <textarea id="admin-responder-texto" class="admin-responder__texto" rows="2" placeholder="Escribir una respuesta al cliente…"></textarea>
+                    <button type="button" id="admin-responder-btn" class="admin-responder__btn">Responder</button>
+                </div>
+            </section>
+        </main>
+    </section>
+
+    <div class="modal" id="modal-invitar" hidden aria-hidden="true">
+        <div class="modal__overlay" data-close></div>
+        <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-invitar-titulo">
+            <button type="button" class="modal__close" data-close aria-label="Cerrar">
+                <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+            </button>
+
+            <div class="modal__step" data-step="form">
+                <h2 id="modal-invitar-titulo">Invitar a la app</h2>
+                <p class="modal__lead">Le mandamos un mail con un link mágico para que entre a la app.</p>
+                <label class="field">
+                    <span>Email del cliente</span>
+                    <input type="email" id="invitar-email" autocomplete="email" required>
+                </label>
+                <p class="error-message" id="invitar-error" hidden></p>
+                <div class="modal__actions">
+                    <button type="button" class="btn-link" data-close>Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="invitar-enviar">Enviar invitación</button>
+                </div>
+            </div>
+
+            <div class="modal__step" data-step="success" hidden>
+                <h2>Invitación enviada</h2>
+                <p class="modal__lead">Le mandamos un mail a <strong id="invitar-email-enviado"></strong> con el código de acceso.</p>
+                <div class="modal__actions modal__actions--column">
+                    <a class="btn btn-primary btn-whatsapp" id="invitar-whatsapp" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+                    <button type="button" class="btn-link" data-close>Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+    <script src="../js/vendor/supabase.umd.js?v=1"></script>
+    <script type="module" src="./cliente.js?v=27"></script>
+</body>
+</html>

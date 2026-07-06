@@ -1,0 +1,19 @@
+# Sistema operativo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editores
+.vscode/
+.idea/
+
+# Claude Code (config local de la sesión, nunca al repo)
+.claude/
+
+# Node (por si en algún momento añadimos build)
+node_modules/
+
+# Working files de auditoría (locales, no se commitean)
+INVENTARIO_UNIFICACION.md
+DEUDA_TECNICA.md

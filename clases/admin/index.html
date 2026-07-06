@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#C8102E">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin — Perros de la Isla</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="./styles.css?v=48">
+    <link rel="stylesheet" href="./jaime.css?v=8">
+</head>
+<body>
+
+    <section class="screen" id="screen-loading" aria-busy="true">
+        <main class="centered">
+            <div class="logo">
+                <div class="logo-circle"><img src="../img/logo.png" alt="" class="logo-circle__img"></div>
+                <span class="logo-text">PDLI</span>
+            </div>
+            <p class="muted">Cargando…</p>
+        </main>
+    </section>
+
+    <section class="screen" id="screen-login" hidden>
+        <header class="header header--solo">
+            <div class="logo">
+                <div class="logo-circle"><img src="../img/logo.png" alt="" class="logo-circle__img"></div>
+                <span class="logo-text">PDLI</span>
+            </div>
+        </header>
+        <main class="centered">
+            <h1 class="title-display">Admin</h1>
+            <form id="login-form" class="form" novalidate>
+                <label class="field">
+                    <span>Email</span>
+                    <input type="email" id="login-email" autocomplete="email" required>
+                </label>
+                <label class="field">
+                    <span>Contraseña</span>
+                    <input type="password" id="login-password" autocomplete="current-password" required>
+                </label>
+                <button type="submit" class="btn btn-primary" id="login-submit">Entrar</button>
+                <p class="error-message" id="login-error" hidden></p>
+            </form>
+        </main>
+    </section>
+
+    <section class="screen admin-spa" id="screen-app" hidden>
+
+        <nav class="admin-nav" aria-label="Navegación principal">
+            <div class="admin-nav-brand">
+                <div class="admin-nav-logo"><img src="../img/logo.png" alt="PDLI" class="logo-circle__img"></div>
+                <span class="admin-nav-name" id="home-admin-name"></span>
+            </div>
+
+            <div class="admin-nav-tabs">
+                <!-- Pestaña Inicio oculta hasta tener contenido real (decisión 08/05/2026)
+                <button class="admin-tab" data-tab="inicio" type="button">
+                    <span class="admin-tab-icon" aria-hidden="true">🏠</span>
+                    <span class="admin-tab-label">Inicio</span>
+                </button>
+                -->
+                <button class="admin-tab" data-tab="agenda" type="button">
+                    <span class="admin-tab-icon" aria-hidden="true">📅</span>
+                    <span class="admin-tab-label">Agenda</span>
+                </button>
+                <button class="admin-tab" data-tab="seguimiento" type="button">
+                    <span class="admin-tab-icon" aria-hidden="true">👀</span>
+                    <span class="admin-tab-label">Seguimiento</span>
+                    <span class="admin-tab-badge" id="seguimiento-badge" hidden aria-label="Pendientes de seguimiento"></span>
+                </button>
+                <button class="admin-tab" data-tab="clientes" type="button">
+                    <span class="admin-tab-icon" aria-hidden="true">👥</span>
+                    <span class="admin-tab-label">Clientes</span>
+                </button>
+                <button class="admin-tab" data-tab="stats" type="button">
+                    <span class="admin-tab-icon" aria-hidden="true">📊</span>
+                    <span class="admin-tab-label">Stats</span>
+                </button>
+                <button class="admin-tab" data-tab="catalogo" type="button">
+                    <span class="admin-tab-icon" aria-hidden="true">📚</span>
+                    <span class="admin-tab-label">Catálogo</span>
+                </button>
+            </div>
+
+            <button class="admin-nav-logout" id="logout-btn" type="button">Cerrar sesión</button>
+        </nav>
+
+        <main class="admin-main">
+
+            <section class="admin-panel" data-panel="inicio" hidden>
+                <h1 class="admin-panel-title">Inicio</h1>
+                <p class="admin-panel-subtitle">KPIs y próximas citas — Bloque 5</p>
+            </section>
+
+            <section class="admin-panel" data-panel="agenda" hidden>
+                <header class="agenda-header" style="position:relative">
+                    <button id="btn-push-toggle" type="button" title="Activar notificaciones" aria-label="Activar o desactivar notificaciones" style="position:absolute;top:0;right:0;background:none;border:none;cursor:pointer;font-size:20px;line-height:1;padding:4px;opacity:.5;transition:opacity .15s">🔕</button>
+                    <h1 class="admin-panel-title">Agenda</h1>
+                    <nav class="agenda-subtabs" aria-label="Sub-secciones de agenda">
+                        <button class="agenda-subtab active" data-subtab="citas" type="button">Citas</button>
+                        <button class="agenda-subtab" data-subtab="bloqueos" type="button">Bloqueos</button>
+                        <button class="agenda-subtab" data-subtab="plantilla" type="button">Plantilla</button>
+                    </nav>
+                </header>
+
+                <section class="agenda-subpanel" data-subpanel="citas">
+                    <div class="agenda-subpanel-header">
+                        <p class="agenda-subpanel-desc">
+                            Citas futuras agendadas. Confirma, cancela, marca como realizada o crea una cita manual.
+                        </p>
+                        <button id="btn-abrir-cita-manual" class="btn-primary" type="button">+ Cita manual</button>
+                    </div>
+                    <div id="citas-list" class="citas-list">
+                        <p class="agenda-empty">Cargando citas…</p>
+                    </div>
+                </section>
+
+                <section class="agenda-subpanel" data-subpanel="bloqueos" hidden>
+                    <div class="agenda-subpanel-header">
+                        <p class="agenda-subpanel-desc">
+                            Días u horas concretas en los que no se aceptan reservas (vacaciones, citas privadas, etc.).
+                        </p>
+                    </div>
+                    <form id="form-bloqueo" class="form-bloqueo" autocomplete="off">
+                        <!-- Fecha: input oculto (preserva el submit existente) +
+                             calendario visual replicado del de cita manual. -->
+                        <input type="hidden" id="bloq-fecha" required>
+                        <div id="bloq-cal-mes" class="cal-mes">
+                            <div class="cal-mes__header">
+                                <button type="button" class="cal-mes__nav" id="bloq-cal-mes-prev" aria-label="Mes anterior">‹</button>
+                                <h3 class="cal-mes__titulo" id="bloq-cal-mes-titulo">—</h3>
+                                <button type="button" class="cal-mes__nav" id="bloq-cal-mes-next" aria-label="Mes siguiente">›</button>
+                            </div>
+                            <div class="cal-mes__dias-semana">
+                                <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+                            </div>
+                            <div class="cal-mes__grid" id="bloq-cal-mes-grid"></div>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-field">
+                                <span>Hora (opcional)</span>
+                                <select id="bloq-hora">
+                                    <option value="">Día completo</option>
+                                </select>
+                            </label>
+                            <label class="form-field form-field-grow">
+                                <span>Motivo</span>
+                                <input type="text" id="bloq-motivo" placeholder="Vacaciones, cita privada, …" maxlength="200">
+                            </label>
+                            <button id="btn-bloquear" class="btn-primary" type="submit">Bloquear</button>
+                        </div>
+                    </form>
+                    <div id="bloqueos-list" class="bloqueos-list">
+                        <p class="agenda-empty">Cargando bloqueos…</p>
+                    </div>
+                </section>
+
+                <section class="agenda-subpanel" data-subpanel="plantilla" hidden>
+                    <div class="agenda-subpanel-header">
+                        <p class="agenda-subpanel-desc">
+                            Grilla semanal de horarios disponibles. Estos slots se ofrecen a los clientes en el chatbot Victoria.
+                        </p>
+                        <button id="btn-add-hora" class="btn-primary" type="button">+ Añadir hora</button>
+                    </div>
+                    <div id="plantilla-grid" class="plantilla-grid">
+                        <p class="agenda-empty">Cargando plantilla…</p>
+                    </div>
+                </section>
+            </section>
+
+            <section class="admin-panel" data-panel="seguimiento" hidden>
+                <header>
+                    <h1 class="admin-panel-title">Seguimiento</h1>
+                    <nav class="seguimiento-subtabs" aria-label="Sub-secciones de seguimiento">
+                        <button class="seguimiento-subtab active" data-subtab="avisos" type="button">
+                            Avisos <span class="seguimiento-subtab-badge" id="avisos-badge" hidden></span>
+                        </button>
+                        <button class="seguimiento-subtab" data-subtab="atencion" type="button">
+                            Atención <span class="seguimiento-subtab-badge" id="atencion-badge" hidden></span>
+                        </button>
+                        <button class="seguimiento-subtab" data-subtab="registros" type="button">
+                            Registros <span class="seguimiento-subtab-badge" id="actividad-badge" hidden></span>
+                        </button>
+                    </nav>
+                </header>
+
+                <section class="seguimiento-subpanel" data-seg-subpanel="avisos">
+                    <div class="avisos-toolbar">
+                        <nav class="avisos-filtros" aria-label="Filtros de avisos">
+                            <button type="button" class="avisos-filtro active" data-filtro="todos">Todos</button>
+                            <button type="button" class="avisos-filtro" data-filtro="no_leidos">No leídos</button>
+                            <button type="button" class="avisos-filtro" data-filtro="cita">Citas</button>
+                            <button type="button" class="avisos-filtro" data-filtro="mensaje">Mensajes</button>
+                            <button type="button" class="avisos-filtro" data-filtro="ejercicio">Entrenos</button>
+                        </nav>
+                        <button type="button" id="btn-avisos-marcar-todos" class="btn-secondary" hidden>Marcar todos leídos</button>
+                    </div>
+                    <p id="avisos-empty" class="avisos-empty" hidden>Cargando avisos…</p>
+                    <ul id="avisos-list" class="avisos-list" role="list"></ul>
+                </section>
+
+                <section class="seguimiento-subpanel" data-seg-subpanel="atencion" hidden>
+                    <div id="atencion-contenido"></div>
+                </section>
+
+                <section class="seguimiento-subpanel" data-seg-subpanel="registros" hidden>
+                    <nav class="actividad-filtros" aria-label="Filtro de registros">
+                        <button type="button" class="actividad-filtro active" data-filtro="pendientes">Pendientes</button>
+                        <button type="button" class="actividad-filtro" data-filtro="todos">Todos</button>
+                    </nav>
+                    <p id="actividad-registros-empty" class="actividad-empty" hidden>Cargando registros…</p>
+                    <ul id="actividad-registros-lista" class="actividad-lista" role="list"></ul>
+                </section>
+            </section>
+
+            <section class="admin-panel" data-panel="clientes" hidden>
+                <div class="search-wrapper">
+                    <input type="search" id="cliente-search" placeholder="Buscar por nombre o teléfono" autocomplete="off">
+                </div>
+                <div class="chips" role="tablist" id="estado-filtros">
+                    <button type="button" class="chip" data-filter="todos" role="tab" aria-selected="false">Todos</button>
+                    <button type="button" class="chip" data-filter="consulta" role="tab" aria-selected="false">Consultas</button>
+                    <button type="button" class="chip is-active" data-filter="activo" role="tab" aria-selected="true">Activos</button>
+                    <button type="button" class="chip" data-filter="veterano" role="tab" aria-selected="false">Veteranos</button>
+                    <button type="button" class="chip" data-filter="ex_cliente" role="tab" aria-selected="false">Ex clientes</button>
+                </div>
+                <div id="clientes-feedback" class="feedback" hidden></div>
+                <ul id="clientes-lista" class="clientes-lista" aria-live="polite"></ul>
+            </section>
+
+            <section class="admin-panel" data-panel="stats" hidden>
+                <header class="stats-header">
+                    <h2>Estadísticas</h2>
+                    <div class="stats-periodo" role="tablist">
+                        <button class="stats-periodo-btn" data-periodo="7d" type="button">7 días</button>
+                        <button class="stats-periodo-btn" data-periodo="30d" type="button">30 días</button>
+                        <div class="stats-mes-nav" id="stats-mes-nav" role="group" aria-label="Navegación mensual">
+                            <button class="stats-mes-btn stats-mes-prev" id="stats-mes-prev" type="button" aria-label="Mes anterior">‹</button>
+                            <button class="stats-periodo-btn stats-mes-label active" data-periodo="mes" id="stats-mes-label" type="button">Mayo 2026</button>
+                            <button class="stats-mes-btn stats-mes-next" id="stats-mes-next" type="button" aria-label="Mes siguiente">›</button>
+                        </div>
+                        <button class="stats-periodo-btn" data-periodo="ano" type="button">Este año</button>
+                        <button class="stats-periodo-btn" data-periodo="todo" type="button">Todo</button>
+                    </div>
+                </header>
+
+                <section class="stats-kpis">
+                    <div class="kpi"><div class="kpi-num" id="kpi-sesiones">—</div><div class="kpi-label">Sesiones totales</div></div>
+                    <div class="kpi"><div class="kpi-num" id="kpi-precios">—</div><div class="kpi-label">Vieron precios</div></div>
+                    <div class="kpi"><div class="kpi-num" id="kpi-citas">—</div><div class="kpi-label">Citas confirmadas</div></div>
+                    <div class="kpi"><div class="kpi-num" id="kpi-tasa">—</div><div class="kpi-label">Tasa de conversión</div></div>
+                    <div class="kpi"><div class="kpi-num" id="kpi-clientes">—</div><div class="kpi-label">Clientes activos</div></div>
+                    <div class="kpi"><div class="kpi-num" id="kpi-llamadas">—</div><div class="kpi-label">Llamadas reservadas</div></div>
+                </section>
+
+                <div class="stats-row">
+                    <section class="stats-card stats-funnel-card">
+                        <h3>Embudo Victoria</h3>
+                        <div id="stats-funnel" class="stats-funnel"><p class="stats-empty">Cargando…</p></div>
+                    </section>
+                    <section class="stats-card stats-deriv-card">
+                        <h3>Derivaciones</h3>
+                        <div id="stats-derivaciones" class="stats-deriv">
+                            <div class="deriv-item"><span class="deriv-num" id="deriv-etologo">—</span><span class="deriv-label">Al etólogo</span></div>
+                            <div class="deriv-item"><span class="deriv-num" id="deriv-zona">—</span><span class="deriv-label">Por zona</span></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="stats-row">
+                    <section class="stats-card stats-llamadas-card">
+                        <h3>Llamadas reservadas — desglose</h3>
+                        <div id="stats-llamadas" class="stats-llamadas">
+                            <div class="llamada-item llamada-item--pendiente">
+                                <span class="llamada-num" id="llamada-pendiente">—</span>
+                                <span class="llamada-label">Pendientes</span>
+                            </div>
+                            <div class="llamada-item llamada-item--realizada">
+                                <span class="llamada-num" id="llamada-realizada">—</span>
+                                <span class="llamada-label">Realizadas</span>
+                            </div>
+                            <div class="llamada-item llamada-item--cancelada">
+                                <span class="llamada-num" id="llamada-cancelada">—</span>
+                                <span class="llamada-label">Canceladas</span>
+                            </div>
+                            <div class="llamada-item llamada-item--no-show">
+                                <span class="llamada-num" id="llamada-no-show">—</span>
+                                <span class="llamada-label">No show</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="stats-row">
+                    <section class="stats-card stats-vicky-card">
+                        <h3>Reservas asistidas por Vicky — desglose</h3>
+                        <div id="stats-vicky" class="stats-vicky">
+                            <div class="vicky-item vicky-item--generados">
+                                <span class="vicky-num" id="vicky-generados">—</span>
+                                <span class="vicky-label">Links generados</span>
+                            </div>
+                            <div class="vicky-item vicky-item--abiertos">
+                                <span class="vicky-num" id="vicky-abiertos">—</span>
+                                <span class="vicky-label">Abiertos por el lead</span>
+                            </div>
+                            <div class="vicky-item vicky-item--citas">
+                                <span class="vicky-num" id="vicky-citas">—</span>
+                                <span class="vicky-label">Citas confirmadas</span>
+                            </div>
+                            <div class="vicky-item vicky-item--expirados">
+                                <span class="vicky-num" id="vicky-expirados">—</span>
+                                <span class="vicky-label">Caducados sin usar</span>
+                            </div>
+                            <div class="vicky-item vicky-item--conversion">
+                                <span class="vicky-num" id="vicky-conversion">—</span>
+                                <span class="vicky-label">Conversión (citas / links)</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="stats-doughnuts">
+                    <section class="stats-card stats-doble">
+                        <h3>Tema preseleccionado</h3>
+                        <div class="canvas-wrap"><canvas id="chart-tema"></canvas></div>
+                        <div class="stats-tabla-desglose" id="tabla-tema"></div>
+                    </section>
+                    <section class="stats-card stats-doble">
+                        <h3>Modalidad</h3>
+                        <div class="canvas-wrap"><canvas id="chart-modalidad"></canvas></div>
+                        <div class="stats-tabla-desglose" id="tabla-modalidad"></div>
+                    </section>
+                    <section class="stats-card stats-doble">
+                        <h3>Origen</h3>
+                        <div class="canvas-wrap"><canvas id="chart-origen"></canvas></div>
+                        <div class="stats-tabla-desglose" id="tabla-origen"></div>
+                    </section>
+                    <section class="stats-card">
+                        <h3>Estado de clientes</h3>
+                        <div class="canvas-wrap"><canvas id="chart-clientes"></canvas></div>
+                    </section>
+                </div>
+
+                <section class="stats-card">
+                    <h3>Citas por mes (últimos 12 meses)</h3>
+                    <div class="canvas-wrap canvas-wrap-bar"><canvas id="chart-citas-mes"></canvas></div>
+                </section>
+
+                <section class="stats-mini-row">
+                    <div class="stats-mini-card">
+                        <span class="stats-mini-valor" id="stats-movil-pct">—</span>
+                        <span class="stats-mini-label">Móvil</span>
+                    </div>
+                    <div class="stats-mini-card">
+                        <span class="stats-mini-valor" id="stats-desktop-pct">—</span>
+                        <span class="stats-mini-label">Desktop</span>
+                    </div>
+                </section>
+            </section>
+
+            <section class="admin-panel" data-panel="catalogo" hidden>
+                <h1 class="admin-panel-title">Catálogo de ejercicios</h1>
+                <p class="admin-panel-subtitle" id="catalogo-subtitle">Cargando…</p>
+                <div id="catalogo-grupos" class="catalogo-grupos">
+                    <p class="agenda-empty">Cargando catálogo…</p>
+                </div>
+            </section>
+
+        </main>
+
+    </section>
+
+    <div class="modal" id="modal-add-hora" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content modal-small">
+            <header class="modal-header">
+                <h2>Añadir hora a plantilla</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <label class="form-field">
+                    <span>Día de la semana</span>
+                    <select id="modal-dia">
+                        <option value="1">Lunes</option>
+                        <option value="2">Martes</option>
+                        <option value="3">Miércoles</option>
+                        <option value="4">Jueves</option>
+                        <option value="5">Viernes</option>
+                        <option value="6">Sábado</option>
+                        <option value="0">Domingo</option>
+                    </select>
+                </label>
+                <label class="form-field">
+                    <span>Hora</span>
+                    <input type="time" id="modal-hora" step="900">
+                </label>
+            </div>
+            <footer class="modal-footer">
+                <button id="modal-cancel" class="btn-secondary" type="button" data-modal-close>Cancelar</button>
+                <button id="modal-save" class="btn-primary" type="button">Guardar</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-cita-manual" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>Crear cita manual</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <fieldset class="form-fieldset">
+                    <legend>Cliente</legend>
+                    <label class="form-field">
+                        <span>Nombre <span class="req">*</span></span>
+                        <div class="ac-wrap">
+                            <input type="text" id="cm-nombre" required maxlength="120" autocomplete="off" placeholder="Tipeá ≥ 2 letras para buscar…">
+                            <input type="hidden" id="cm-cliente-id">
+                            <div class="ac-dropdown" id="cm-cliente-dropdown" hidden></div>
+                        </div>
+                    </label>
+                    <p id="cm-cliente-hint" class="form-hint" hidden></p>
+                    <label class="form-field">
+                        <span>Móvil <span class="req">*</span></span>
+                        <input type="tel" id="cm-telefono" required maxlength="40" placeholder="+34 612 345 678" autocomplete="off" inputmode="tel">
+                    </label>
+                    <div class="form-row">
+                        <label class="form-field form-field-grow">
+                            <span>Dirección</span>
+                            <input type="text" id="cm-direccion" maxlength="200" autocomplete="off">
+                        </label>
+                        <label class="form-field">
+                            <span>Email</span>
+                            <input type="email" id="cm-email" maxlength="120" autocomplete="off">
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-field form-field-grow">
+                            <span>Enlace de Google Maps</span>
+                            <input type="text" id="cm-ubicacion-maps" maxlength="500" autocomplete="off" placeholder="Pega aquí el enlace de Compartir de Google Maps">
+                        </label>
+                        <button type="button" id="cm-ubicacion-abrir" class="btn-secondary" hidden title="Abrir en Google Maps">📍 Abrir</button>
+                        <button type="button" id="cm-ubicacion-guardar" class="btn-secondary" hidden title="Guardar el enlace en la ficha del cliente">Guardar enlace</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="form-fieldset">
+                    <legend>Perro</legend>
+                    <label class="form-field" id="cm-perro-selector-wrap" hidden>
+                        <span>Elegir perro existente</span>
+                        <select id="cm-perro-selector"></select>
+                    </label>
+                    <input type="hidden" id="cm-perro-id">
+                    <label class="form-field">
+                        <span>Nombre <span class="req">*</span></span>
+                        <input type="text" id="cm-perro" required maxlength="80">
+                    </label>
+                    <div class="form-row">
+                        <label class="form-field">
+                            <span>Raza</span>
+                            <input type="text" id="cm-raza" maxlength="80">
+                        </label>
+                        <label class="form-field">
+                            <span>Edad</span>
+                            <select id="cm-edad">
+                                <option value="" disabled selected>Selecciona la edad</option>
+                                <option value="0">Menos de 1 mes</option>
+                                <option value="1">1 mes</option><option value="2">2 meses</option>
+                                <option value="3">3 meses</option><option value="4">4 meses</option>
+                                <option value="5">5 meses</option><option value="6">6 meses</option>
+                                <option value="7">7 meses</option><option value="8">8 meses</option>
+                                <option value="9">9 meses</option><option value="10">10 meses</option>
+                                <option value="11">11 meses</option>
+                                <option value="12">1 año</option><option value="24">2 años</option>
+                                <option value="36">3 años</option><option value="48">4 años</option>
+                                <option value="60">5 años</option><option value="72">6 años</option>
+                                <option value="84">7 años</option><option value="96">8 años</option>
+                                <option value="108">9 años</option><option value="120">10 años</option>
+                                <option value="132">11 años</option><option value="144">12 años</option>
+                                <option value="156">13 años</option><option value="168">14 años</option>
+                                <option value="180">15 años</option><option value="192">Más de 15 años</option>
+                            </select>
+                        </label>
+                        <label class="form-field">
+                            <span>Peso (kg)</span>
+                            <input type="number" id="cm-peso" min="0" max="120" step="0.1">
+                        </label>
+                    </div>
+                    <label class="form-field form-field-checkbox">
+                        <input type="checkbox" id="cm-ppp">
+                        <span>Es PPP (potencialmente peligroso)</span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="form-fieldset">
+                    <legend>Cita</legend>
+
+                    <!-- Fecha: input oculto (preserva el resto del flujo) +
+                         calendario visual portado del cliente. -->
+                    <input type="hidden" id="cm-fecha" required>
+                    <div id="cm-cal-mes" class="cal-mes">
+                        <div class="cal-mes__header">
+                            <button type="button" class="cal-mes__nav" id="cm-cal-mes-prev" aria-label="Mes anterior">‹</button>
+                            <h3 class="cal-mes__titulo" id="cm-cal-mes-titulo">—</h3>
+                            <button type="button" class="cal-mes__nav" id="cm-cal-mes-next" aria-label="Mes siguiente">›</button>
+                        </div>
+                        <div class="cal-mes__dias-semana">
+                            <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+                        </div>
+                        <div class="cal-mes__grid" id="cm-cal-mes-grid"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <label class="form-field">
+                            <span>Hora <span class="req">*</span></span>
+                            <select id="cm-hora" required>
+                                <option value="">—</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-field">
+                            <span>Modalidad</span>
+                            <select id="cm-modalidad">
+                                <option value="presencial">Presencial (zona del cliente)</option>
+                                <option value="presencial-palma">Presencial en parque de Palma</option>
+                                <option value="online">Online (Google Meet)</option>
+                            </select>
+                        </label>
+                        <label class="form-field form-field-grow">
+                            <span>Zona</span>
+                            <input type="text" id="cm-zona" maxlength="80">
+                        </label>
+                        <label class="form-field">
+                            <span>Nº de clase</span>
+                            <input type="number" id="cm-numero-clase" min="1" step="1" placeholder="—">
+                        </label>
+                    </div>
+                    <label class="form-field">
+                        <span>Notas</span>
+                        <textarea id="cm-notas" rows="3" maxlength="500"></textarea>
+                    </label>
+                </fieldset>
+
+                <p id="cm-error" class="form-error" hidden></p>
+            </div>
+            <footer class="modal-footer">
+                <button id="cm-cancel" class="btn-secondary" type="button" data-modal-close>Cancelar</button>
+                <button id="cm-save" class="btn-primary" type="button">Crear cita</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-cita-edit" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>Editar cita</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <p id="ce-cliente-actual" class="form-hint"></p>
+
+                <fieldset class="form-fieldset">
+                    <legend>Cita</legend>
+                    <label class="form-field">
+                        <span>Cliente <span class="req">*</span></span>
+                        <div class="ac-wrap">
+                            <input type="text" id="ce-cliente-input" required maxlength="120" autocomplete="off" placeholder="Tipeá ≥ 2 letras para buscar…">
+                            <input type="hidden" id="ce-cliente">
+                            <div class="ac-dropdown" id="ce-cliente-dropdown" hidden></div>
+                        </div>
+                    </label>
+                    <div class="form-row">
+                        <label class="form-field">
+                            <span>Fecha <span class="req">*</span></span>
+                            <input type="date" id="ce-fecha" required>
+                        </label>
+                        <label class="form-field">
+                            <span>Hora <span class="req">*</span></span>
+                            <input type="time" id="ce-hora" step="900" required>
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-field">
+                            <span>Modalidad</span>
+                            <select id="ce-modalidad">
+                                <option value="presencial">Presencial (zona del cliente)</option>
+                                <option value="presencial-palma">Presencial en parque de Palma</option>
+                                <option value="online">Online (Google Meet)</option>
+                            </select>
+                        </label>
+                        <label class="form-field form-field-grow">
+                            <span>Lugar / Zona</span>
+                            <input type="text" id="ce-zona" maxlength="80">
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-field">
+                            <span>Estado</span>
+                            <select id="ce-estado">
+                                <option value="pendiente">Pendiente</option>
+                                <option value="confirmada">Confirmada</option>
+                                <option value="cancelada">Cancelada</option>
+                                <option value="realizada">Realizada</option>
+                            </select>
+                        </label>
+                        <label class="form-field">
+                            <span>Nº de clase</span>
+                            <input type="number" id="ce-numero-clase" min="1" step="1" placeholder="—">
+                        </label>
+                    </div>
+                    <label class="form-field">
+                        <span>Notas</span>
+                        <textarea id="ce-notas" rows="3" maxlength="500"></textarea>
+                    </label>
+                </fieldset>
+
+                <fieldset class="form-fieldset">
+                    <legend>Resumen de la clase · b60</legend>
+
+                    <div class="rc-escucha">
+                        <p class="form-hint">Explica el ejercicio con Jaime escuchando y corta. Genera el borrador; practicad; para el siguiente ejercicio, vuelve a escuchar y genera de nuevo: se suma al mismo resumen.</p>
+                        <div class="rc-escucha-row">
+                            <button id="rc-escucha-toggle" class="btn-secondary rc-escucha-btn" type="button">🎙 Jaime, escucha</button>
+                            <span id="rc-escucha-timer" class="rc-escucha-timer" hidden>00:00</span>
+                        </div>
+                        <p id="rc-escucha-aviso" class="form-hint rc-escucha-aviso" hidden></p>
+                        <ul id="rc-escucha-lista" class="rc-escucha-lista"></ul>
+                        <div class="rc-escucha-acciones">
+                            <button id="rc-borrador" class="btn-secondary" type="button" hidden>Generar borrador con las escuchas</button>
+                            <button id="rc-regenerar" class="btn-secondary rc-regenerar" type="button" hidden>Regenerar todo</button>
+                        </div>
+                    </div>
+
+                    <label class="form-field">
+                        <span>Resumen para el tutor</span>
+                        <textarea id="rc-resumen" rows="6"></textarea>
+                    </label>
+                    <div class="rc-guardar-row">
+                        <button id="rc-guardar" class="btn-primary" type="button">Guardar resumen</button>
+                        <span id="rc-msg" class="rc-msg"></span>
+                    </div>
+
+                    <div class="rc-dictado">
+                        <button id="rc-dictado-toggle" class="rc-linkbtn" type="button" aria-expanded="false">¿Problemas con la escucha? Dictar el resumen</button>
+                        <div id="rc-dictado-panel" class="rc-dictado-panel" hidden>
+                            <p class="form-hint">Dicta tu repaso a mano. Si haces una pausa larga el dictado se detiene; toca Grabar otra vez para continuar (lo anterior se mantiene).</p>
+                            <div class="rc-grabar-row">
+                                <button id="rc-grabar" class="btn-secondary" type="button">🎙 Grabar</button>
+                                <span id="rc-indicador" class="rc-indicador" hidden>🎙 Grabando…</span>
+                            </div>
+                            <label class="form-field">
+                                <span>Lo que dijiste</span>
+                                <textarea id="rc-crudo" rows="4" placeholder="Empezá a hablar…"></textarea>
+                            </label>
+                            <button id="rc-generar" class="btn-secondary" type="button" disabled>Generar resumen</button>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <p id="ce-error" class="form-error" hidden></p>
+            </div>
+            <footer class="modal-footer">
+                <button id="ce-eliminar" class="btn-secondary btn-eliminar-modal" type="button">Eliminar</button>
+                <button id="ce-cancel" class="btn-secondary" type="button" data-modal-close>Cancelar</button>
+                <button id="ce-save" class="btn-primary" type="button">Guardar</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-detalle-llamada" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>Detalle de llamada</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <p id="ml-fecha-hora" class="llamada-modal-fecha"></p>
+                <h3 id="ml-nombre" class="llamada-modal-nombre"></h3>
+
+                <div class="llamada-modal-campo">
+                    <span class="llamada-modal-label">Móvil</span>
+                    <p id="ml-movil" class="llamada-modal-valor"></p>
+                    <a id="ml-btn-llamar" class="btn-primary llamada-modal-btn-llamar" href="#" hidden>📞 Llamar ahora</a>
+                </div>
+
+                <div class="llamada-modal-campo">
+                    <span class="llamada-modal-label">Zona</span>
+                    <p id="ml-zona" class="llamada-modal-valor"></p>
+                </div>
+
+                <div class="llamada-modal-campo">
+                    <span class="llamada-modal-label">Perro</span>
+                    <p id="ml-perro" class="llamada-modal-valor"></p>
+                </div>
+
+                <div class="llamada-modal-campo">
+                    <span class="llamada-modal-label">Mensaje del cliente</span>
+                    <p id="ml-mensaje" class="llamada-modal-valor"></p>
+                </div>
+
+                <div class="llamada-modal-campo">
+                    <span class="llamada-modal-label">Reportado en chat</span>
+                    <ul id="ml-diagnostico" class="llamada-modal-diagnostico"></ul>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" type="button" data-modal-close>Cerrar</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-editar-ejercicio" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>Editar ejercicio</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <label class="form-field">
+                    <span>Nombre</span>
+                    <input type="text" id="ee-nombre" maxlength="120">
+                </label>
+                <label class="form-field">
+                    <span>Categoría</span>
+                    <select id="ee-categoria">
+                        <option value="ejercicio">Ejercicio</option>
+                        <option value="cambio_rutina">Cambio de rutina</option>
+                        <option value="tarea">Tarea</option>
+                        <option value="herramienta">Herramienta</option>
+                    </select>
+                </label>
+                <label class="form-field">
+                    <span>Descripción corta</span>
+                    <input type="text" id="ee-descripcion" maxlength="200" placeholder="Línea breve que ve el cliente en la tarjeta">
+                </label>
+                <label class="form-field">
+                    <span>Cómo se hace (instructivo para el tutor)</span>
+                    <textarea id="ee-como-se-hace" rows="10" placeholder="Instructivo largo para el tutor: cómo trabajar el ejercicio en casa, paso a paso."></textarea>
+                </label>
+                <label class="form-field">
+                    <span>Instrucciones detalladas</span>
+                    <textarea id="ee-instrucciones" rows="8" placeholder="Explica paso a paso cómo se hace el ejercicio. El cliente lo ve al tocar la tarjeta."></textarea>
+                </label>
+                <label class="form-field">
+                    <span>Video explicativo (YouTube)</span>
+                    <input type="url" id="ee-video" inputmode="url" placeholder="Pega aquí el enlace de YouTube del video">
+                </label>
+                <p class="error-message" id="ee-error" hidden></p>
+            </div>
+            <footer class="modal-footer">
+                <button id="ee-cancel" class="btn-secondary" type="button" data-modal-close>Cancelar</button>
+                <button id="ee-guardar" class="btn-primary" type="button">Guardar</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-crear-ejercicio" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>Nuevo ejercicio</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <label class="form-field">
+                    <span>Nombre</span>
+                    <input type="text" id="nc-nombre" maxlength="120">
+                </label>
+                <label class="form-field">
+                    <span>Categoría</span>
+                    <select id="nc-categoria">
+                        <option value="ejercicio">Ejercicio</option>
+                        <option value="cambio_rutina">Cambio de rutina</option>
+                        <option value="tarea">Tarea</option>
+                        <option value="herramienta">Herramienta</option>
+                    </select>
+                </label>
+                <label class="form-field">
+                    <span>Código</span>
+                    <input type="text" id="nc-codigo" maxlength="32" placeholder="Código corto en mayúsculas (ej. PERM_FORMAL). Si lo dejas vacío se rellena desde el nombre">
+                </label>
+                <label class="form-field">
+                    <span>Plantilla</span>
+                    <select id="nc-plantilla">
+                        <option value="">Elige una</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </label>
+                <label class="form-field">
+                    <span>Descripción corta</span>
+                    <input type="text" id="nc-descripcion" maxlength="200" placeholder="Línea breve que ve el cliente en la tarjeta">
+                </label>
+                <label class="form-field">
+                    <span>Cómo se hace (instructivo para el tutor)</span>
+                    <textarea id="nc-como-se-hace" rows="10" placeholder="Instructivo largo para el tutor: cómo trabajar el ejercicio en casa, paso a paso."></textarea>
+                </label>
+                <label class="form-field">
+                    <span>Instrucciones detalladas</span>
+                    <textarea id="nc-instrucciones" rows="8" placeholder="Explica paso a paso cómo se hace el ejercicio. El cliente lo ve al tocar la tarjeta."></textarea>
+                </label>
+                <label class="form-field">
+                    <span>Video explicativo (YouTube)</span>
+                    <input type="url" id="nc-video" inputmode="url" placeholder="Pega aquí el enlace de YouTube del video">
+                </label>
+                <p class="error-message" id="nc-error" hidden></p>
+            </div>
+            <footer class="modal-footer">
+                <button id="nc-cancel" class="btn-secondary" type="button" data-modal-close>Cancelar</button>
+                <button id="nc-guardar" class="btn-primary" type="button">Crear</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-comentar-actividad" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-content modal-small">
+            <header class="modal-header">
+                <h2>Comentar registro</h2>
+                <button class="modal-close" data-modal-close type="button" aria-label="Cerrar">✕</button>
+            </header>
+            <div class="modal-body">
+                <label class="form-field">
+                    <span>Comentario para el cliente</span>
+                    <textarea id="comentar-actividad-texto" rows="4" maxlength="500" placeholder="Lo que quieras decirle al cliente sobre este entreno…"></textarea>
+                </label>
+                <p id="comentar-actividad-error" class="form-error" hidden></p>
+            </div>
+            <footer class="modal-footer">
+                <button id="comentar-actividad-cancel" class="btn-secondary" type="button" data-modal-close>Cancelar</button>
+                <button id="comentar-actividad-guardar" class="btn-primary" type="button">Guardar</button>
+            </footer>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="../js/vendor/supabase.umd.js?v=1"></script>
+    <script type="module" src="./admin.js?v=76"></script>
+    <script type="module">
+      import { activarNotificaciones, desactivarNotificaciones, probarPush, estadoNotificaciones } from './push.js?v=2';
+      function toast(msg) {
+        const t = document.createElement('div');
+        t.textContent = msg;
+        t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#6B7A3A;color:#F5EFE0;font-family:Inter,sans-serif;font-weight:600;font-size:14px;padding:10px 18px;border-radius:999px;box-shadow:0 8px 20px rgba(26,26,26,.18);opacity:0;transition:opacity .2s,transform .2s;z-index:9999;pointer-events:none';
+        document.body.appendChild(t);
+        requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+        setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => t.remove(), 260); }, 2500);
+      }
+      async function pintar() {
+        const b = document.getElementById('btn-push-toggle');
+        if (!b) return;
+        const e = await estadoNotificaciones();
+        if (e === 'activo') { b.textContent = '🔔'; b.dataset.on = '1'; b.style.opacity = '1'; b.title = 'Notificaciones activadas — tocá para desactivar'; }
+        else { b.textContent = '🔕'; b.dataset.on = ''; b.style.opacity = '.5'; b.title = (e === 'bloqueado') ? 'Notificaciones bloqueadas en el navegador' : 'Activar notificaciones'; }
+      }
+      document.addEventListener('click', async (ev) => {
+        const b = ev.target.closest && ev.target.closest('#btn-push-toggle');
+        if (b) {
+          ev.preventDefault();
+          b.disabled = true;
+          const eraOn = b.dataset.on === '1';
+          // Feedback optimista: invertimos el ícono al toque, antes del round-trip
+          if (eraOn) { b.textContent = '🔕'; b.dataset.on = ''; b.style.opacity = '.5'; b.title = 'Apagando notificaciones…'; }
+          else { b.textContent = '🔔'; b.dataset.on = '1'; b.style.opacity = '1'; b.title = 'Activando notificaciones…'; }
+          try {
+            if (eraOn) {
+              await desactivarNotificaciones();
+            } else {
+              await activarNotificaciones();
+              await probarPush();
+              toast('Notificación enviada ✓');
+            }
+          } catch (err) {
+            b.title = (err && err.message) || 'Error con las notificaciones';
+          }
+          await pintar(); // sincroniza con el estado real (revierte si el await falló)
+          b.disabled = false;
+          return;
+        }
+        if (ev.target.closest && ev.target.closest('[data-tab="agenda"]')) setTimeout(pintar, 150);
+      });
+      pintar();
+    </script>
+</body>
+</html>

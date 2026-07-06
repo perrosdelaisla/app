@@ -1,0 +1,124 @@
+/* ── Puente de integración con la app real ───────────────────────────
+   Adapta el cover del prototipo (que usaba un componente de Design)
+   a la foto real del perro, el avatar y el lápiz del nombre. ──────── */
+
+/* La home entra a sangrado (sin el padding del tab-panel) */
+/* OJO: el `display:block` va con `:not([hidden])` para no pisar el
+   `.tab-panel[hidden] { display:none }` global. Sin eso, esta regla
+   gana por especificidad (incluye un ID) y deja a tab-rutina ocupando
+   espacio aunque tenga [hidden] → empuja a las otras tabs fuera de la
+   viewport y se ven en blanco. */
+.home #tab-rutina.tab-panel{ padding:0; }
+.home #tab-rutina.tab-panel:not([hidden]){ display:block; }
+#screen-app.home{ background:var(--c-bg); color:var(--c-text); }
+
+/* Foto real del perro como fondo del cover (reemplaza al image-slot) */
+.home .dBp .cover .cover-photo{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; z-index:0; }
+.home .dBp .cover .cover-fallback{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-size:90px; color:#F5EFE0; background:var(--c-field); z-index:0; }
+/* El placeholder y la <img> respetan el [hidden] que togglea la app
+   (si no, display:flex/block le ganan a hidden y el placeholder tapa la foto). */
+.home .dBp .cover .cover-photo[hidden], .home .dBp .cover .cover-fallback[hidden]{ display:none; }
+.home .dBp .cover .cover-fotobtn{ position:absolute; right:12px; bottom:12px; z-index:4; width:34px; height:34px; border-radius:999px; border:1px solid rgba(245,239,224,0.30); background:rgba(20,18,12,0.40); color:#F5EFE0; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+.home .dBp .cover .cover-fotobtn svg{ width:16px; height:16px; }
+
+/* Avatar (no existía en el prototipo) — mismo estilo que el theme-toggle */
+.home .dBp .cover .cavatar{ position:relative; z-index:4; }
+.home .dBp .cover .avatar-btn{ width:32px; height:32px; border-radius:999px; flex:0 0 auto; cursor:pointer; display:flex; align-items:center; justify-content:center; background:rgba(20,18,12,0.38); color:#F5EFE0; border:1px solid rgba(245,239,224,0.30); font-family:var(--body); font-weight:700; font-size:13px; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+.home .dBp .cover .avatar-menu{ position:absolute; top:40px; right:0; background:var(--c-surface); border:1px solid var(--c-hair); border-radius:12px; padding:6px; min-width:160px; z-index:30; box-shadow:0 12px 34px rgba(0,0,0,0.22); }
+.home .dBp .cover .avatar-menu__item{ display:block; width:100%; text-align:left; border:0; background:transparent; padding:10px 12px; border-radius:8px; font-family:var(--body); font-size:14px; color:var(--c-text); cursor:pointer; }
+.home .dBp .cover .avatar-menu__item:hover{ background:var(--c-field); }
+
+/* Lápiz de editar perro, junto al nombre grande */
+.home .dBp .cover .cbot .nm .edit-dog{ border:0; background:transparent; color:rgba(245,239,224,0.7); cursor:pointer; vertical-align:middle; margin-left:8px; }
+.home .dBp .cover .cbot .nm .edit-dog svg{ width:16px; height:16px; }
+
+/* Slogan oficial de marca sobre el cover (entre saludo y nombre del perro) */
+.dBp .cover .cbot .slogan{
+  font-family:var(--body);
+  font-size:12px;
+  font-style:italic;
+  color:rgba(245, 239, 224, 0.82);
+  letter-spacing:0.2px;
+  margin-top:4px;
+  margin-bottom:2px;
+}
+
+/* Complemento del protocolo */
+.home .dBp .band .proto-row .protocol .pp .v-comp{ font-size:11px; color:var(--c-text); opacity:.7; margin-top:3px; }
+
+/* ── Estado activo de pestañas ───────────────────────────────────────
+   El JS de la app togglea la clase .is-active, pero el prototipo de
+   Design pinta el activo con .is-on. Acá mapeamos el look de Design a
+   .is-active (lo que el JS realmente usa) y neutralizamos el toggle y
+   las subtabs viejos de styles.css. NO se toca ninguna lógica. ─────── */
+
+/* Toggle Rutina / Mi progreso: caja segmentada, botones al 50% */
+.home .work-switch.rutina-modo{ display:flex; gap:0; margin:0 0 13px; padding:3px; background:var(--c-field); border:1px solid var(--c-hair-2); border-radius:11px; }
+.home .work-switch .rutina-modo__btn{ flex:1; min-width:0; max-width:none; border:0; border-radius:8px; background:transparent; color:var(--c-text-3); }
+.home .work-switch .rutina-modo__btn.is-active{ background:var(--c-surface); color:var(--c-text); box-shadow:0 1px 3px rgba(0,0,0,0.12); }
+.home[data-theme="oscuro"] .work-switch .rutina-modo__btn.is-active{ background:#39341f; color:var(--c-text); }
+
+/* Subtabs de categoría: pastillas con borde visible; la activa rellena */
+.home .subtabs .rutina-subtab{ flex:0 0 auto; border:1px solid var(--c-hair-2); background:transparent; border-radius:999px; color:var(--c-text-2); padding:8px 14px; }
+.home .subtabs .rutina-subtab:hover{ border-color:var(--c-text-3); color:var(--c-text); }
+.home .subtabs .rutina-subtab.is-active{ background:var(--c-text); color:var(--c-bg); border-color:var(--c-text); }
+
+/* ── Refuerzo SOLO en tema claro ──────────────────────────────────────
+   Sobre el crema, los bordes de la maqueta (10% de negro) se BORRAN en una
+   pantalla real (en la herramienta de Design se ven, pero no se reproducen).
+   Por eso acá los marcamos un poco más fuerte SOLO en claro; el oscuro, que
+   ya se ve bien, queda intacto. ──────────────────────────────────────── */
+.home[data-theme="claro"] .work-switch.rutina-modo{ border-color:rgba(26,26,26,0.20); background:#E7DECA; }
+.home[data-theme="claro"] .subtabs .rutina-subtab{ border-color:rgba(26,26,26,0.24); color:#3A362F; }
+.home[data-theme="claro"] .subtabs .rutina-subtab.is-active{ background:#1A1A1A; color:#F5EFE0; border-color:#1A1A1A; }
+/* Banda de KPI (Clases / Realizada / Por reservar): que se vean las
+   líneas separadoras y el marco, invisibles en claro al 10% de negro. */
+.home[data-theme="claro"] .dBp .band{ border-bottom-color:rgba(26,26,26,0.16); }
+.home[data-theme="claro"] .dBp .band .clases{ border-top-color:rgba(26,26,26,0.16); }
+.home[data-theme="claro"] .clases .c{ border-right-color:rgba(26,26,26,0.14); }
+
+/* ── "Mi progreso": tarjeta por ejercicio ────────────────────────────
+   styles.css le daba una tarjeta en crema-sobre-oscuro (invisible en
+   claro). La adaptamos a los dos temas para que no se sienta vacío.
+   (Las barritas por semana van adentro de esta tarjeta — pendiente del
+   backend.) ─────────────────────────────────────────────────────────── */
+.home .progreso-lista{ gap:10px; }
+.home .progreso-item{ background:var(--c-surface); border:1px solid var(--c-hair-2); border-radius:14px; padding:13px 14px; }
+.home .progreso-item__nombre{ color:var(--c-text); }
+.home[data-theme="claro"] .progreso-item{ border-color:rgba(26,26,26,0.12); }
+
+/* Historial: mini-gráfico de barras verticales, una por semana desde la
+   asignación. Altura = cumplimiento; color = estado (rojo/verde/azul).
+   Scroll horizontal si son muchas semanas. */
+.home .progreso-historial{ display:flex; align-items:flex-end; gap:5px; overflow-x:auto; padding:2px 0; margin-top:6px; scrollbar-width:none; -ms-overflow-style:none; }
+.home .progreso-historial::-webkit-scrollbar{ height:0; display:none; }
+/* Riel visible: cada semana es una ranura, llena o vacía. */
+.home .progreso-semana{ position:relative; flex:0 0 auto; width:11px; height:40px; border-radius:5px; background:var(--c-field); overflow:hidden; }
+.home[data-theme="claro"] .progreso-semana{ background:#E3DAC6; }
+.home .progreso-semana__fill{ position:absolute; left:0; right:0; bottom:0; border-radius:5px; transition:height .25s ease; }
+.home .progreso-semana--rojo  .progreso-semana__fill{ background:var(--pdli-rojo,#C8102E); }
+.home .progreso-semana--verde .progreso-semana__fill{ background:var(--pdli-oliva,#6B7A3A); }
+.home .progreso-semana--azul  .progreso-semana__fill{ background:#1F4FA8; }
+.home .progreso-semana--sin   .progreso-semana__fill{ background:var(--c-text-3); }
+.home .progreso-semana--actual{ box-shadow:0 0 0 1.5px var(--c-text-3); }
+
+/* ── Lista de ejercicios real con el estilo del prototipo ────────── */
+.home #rutina-lista, .home .rutina-lista{ display:flex; flex-direction:column; gap:9px; list-style:none; margin:0; padding:0; }
+.home .rutina-renglon{ list-style:none; }
+.home .rutina-card{
+    display:block; background:var(--c-surface); border:1px solid var(--c-hair);
+    border-radius:13px; padding:13px 14px; cursor:pointer; color:var(--c-text);
+    transition:border-color .15s ease, transform .1s ease;
+}
+.home .rutina-card:hover{ border-color:var(--c-hair-2); }
+.home .rutina-card:active{ transform:scale(0.99); }
+.home .rutina-card--superado{ opacity:.55; }
+.home .rutina-card__head{ display:flex; align-items:center; gap:13px; }
+.home .rutina-card__nombre-wrap{ flex:1; min-width:0; }
+.home .rutina-card__nombre{ font-family:var(--body); font-size:14.5px; font-weight:600; color:var(--c-text); line-height:1.25; margin:0; }
+.home .rutina-card__objetivo{ font-family:var(--body); font-size:11px; color:var(--c-text-3); margin:3px 0 0; }
+.home .rutina-card__chevron{ flex:0 0 auto; color:var(--c-text-3); width:16px; height:16px; }
+.home .rutina-card__desc{ font-family:var(--body); font-size:12px; line-height:1.45; color:var(--c-text-2); margin:8px 0 0; }
+.home .rutina-card__progreso{ display:inline-block; margin-top:8px; font-family:var(--body); font-size:8.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase; border-radius:999px; padding:3px 8px; border:1px solid var(--c-rojo); color:var(--c-rojo); }
+.home .rutina-card__progreso--verde{ border-color:var(--c-oliva); color:var(--c-oliva); }
+.home .rutina-card__progreso--rojo{ border-color:var(--c-rojo); color:var(--c-rojo); }
