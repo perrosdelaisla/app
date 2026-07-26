@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout de este repo (app)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout del repo fuente (clases, público, main)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: perrosdelaisla/clases
           ref: main
