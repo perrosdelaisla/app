@@ -781,25 +781,26 @@ function bindBackNavigation() {
             return;
         }
 
-        // Prioridad 2: subtab Agenda ≠ citas
+        // Prioridad 2: no estás en la pantalla de arranque (Agenda > Citas)
+        // → volver a ella DE UN SOLO SALTO. Antes esto eran dos pasos
+        // encadenados (sub-pestaña primero, pestaña después) y desde
+        // "Seguimiento > Registros" hacían falta tres toques para llegar a
+        // poder salir: eso era el paseo. Ahora es uno.
         const tabActual = document.querySelector('.admin-tab.active')?.dataset.tab;
-        const subActual = document.querySelector('.agenda-subtab.active')?.dataset.subtab;
-        if (tabActual === 'agenda' && subActual && subActual !== 'citas') {
+        const subAgenda = document.querySelector('.agenda-subtab.active')?.dataset.subtab;
+        const fueraDeCasa = (tabActual && tabActual !== 'agenda')
+                         || (subAgenda && subAgenda !== 'citas');
+        if (fueraDeCasa) {
             history.pushState({ pdli: 'anchor' }, '');
             navegandoPorPopstate = true;
-            try { activarAgendaSubtab('citas'); } finally { navegandoPorPopstate = false; }
+            try {
+                if (tabActual !== 'agenda') activarTab('agenda');
+                if (subAgenda && subAgenda !== 'citas') activarAgendaSubtab('citas');
+            } finally { navegandoPorPopstate = false; }
             return;
         }
 
-        // Prioridad 3: tab ≠ agenda → volver a agenda (siempre arranca en citas)
-        if (tabActual && tabActual !== 'agenda') {
-            history.pushState({ pdli: 'anchor' }, '');
-            navegandoPorPopstate = true;
-            try { activarTab('agenda'); } finally { navegandoPorPopstate = false; }
-            return;
-        }
-
-        // Prioridad 4: Agenda > Citas sin nada → doble-tap para salir
+        // Prioridad 3: ya en Agenda > Citas → doble-tap para salir de la app.
         if (readyToExit) {
             // Segundo back dentro de los 2s: dejar salir. No re-pushear.
             clearTimeout(exitTimer);

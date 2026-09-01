@@ -420,12 +420,9 @@ function activarTab(tabRaw, { updateUrl } = {}) {
         window.history.replaceState({}, '', url);
     }
 
-    // Si salimos de la pestaña Ejercicios con una subtab no-default activa,
-    // la devolvemos a su default para consumir su entrada de historial (si no,
-    // queda una entrada colgada que descuadra el back desde otras pestañas).
-    if (tab !== DEFAULT_TAB && state.subtabActiva !== DEFAULT_SUBTAB) {
-        activarSubtab(DEFAULT_SUBTAB);
-    }
+    // (Antes se reseteaba la sub-pestaña al salir de Ejercicios, solo para
+    // cuadrar el historial. Ya no hace falta, y así la encuentras donde la
+    // dejaste al volver.)
 
     if (tab === 'salud') { renderSaludPerro(); cargarSaludPerro(state.perroId); }
     if (tab === 'herramientas') renderHerramientas();
@@ -458,16 +455,9 @@ function activarSubtab(subtab) {
     // Mientras se reordena, las sub-pestañas quedan bloqueadas (también las
     // que dispararía el swipe horizontal).
     if (state.modoReordenar) return;
-    // Back navigation: mientras estás en una subtab ≠ default hay UNA entrada
-    // extra en el historial, igual que con los modales. Cruzar hacia afuera de
-    // la default la suma; volver a la default la consume. pushHistoriaUI /
-    // consumirHistoriaUI ya respetan navegandoPorPopstate (no pushean cuando
-    // el cambio viene de un popstate).
-    const eraDefault = (state.subtabActiva === DEFAULT_SUBTAB);
-    const esDefault = (subtab === DEFAULT_SUBTAB);
+    // Las sub-pestañas ya no tocan el historial: el botón atrás del móvil
+    // solo cierra lo que esté abierto o vuelve una pantalla.
     state.subtabActiva = subtab;
-    if (eraDefault && !esDefault) pushHistoriaUI();
-    else if (!eraDefault && esDefault) consumirHistoriaUI();
     document.querySelectorAll('.subtab').forEach((b) => {
         const active = b.dataset.subtab === subtab;
         b.classList.toggle('is-active', active);
@@ -506,7 +496,7 @@ async function renderEjerciciosActivos() {
     const [{ data, error }, , fasesRes] = await Promise.all([
         supabase
             .from('ejercicios_asignados')
-            .select('id, ejercicio_id, activo, posicion_rutina, progresa_de, min_semanal, max_diario, valor_comida, dificultad, objetivo_seg, objetivo_distancia, reps_sugeridas_min, reps_sugeridas_max, parametros, grupo_protocolo, estado_cliente, estado_actualizado_en, ejercicios (id, codigo, nombre, categoria, campos)')
+            .select('id, ejercicio_id, activo, posicion_rutina, progresa_de, min_semanal, max_diario, valor_comida, dificultad, objetivo_seg, objetivo_distancia, reps_sugeridas_min, reps_sugeridas_max, parametros, grupo_protocolo, estado_cliente, estado_actualizado_en, se_entrena, se_usa, tipo_tarea, fotos_cliente, ejercicios (id, codigo, nombre, categoria, campos)')
             .eq('perro_id', state.perroId)
             .eq('activo', true)
             .order('posicion_rutina', { ascending: true }),
@@ -605,6 +595,21 @@ async function renderEjerciciosActivos() {
             });
         });
     });
+    listaEl.querySelectorAll('[data-accion="registro"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const card = btn.closest('.ejercicio-activo-card');
+            const nombre = card?.querySelector('.ejercicio-activo-nombre')?.textContent || '';
+            abrirSelectorRegistro({
+                asignadoId: btn.dataset.asignadoId,
+                nombre,
+                categoria: btn.dataset.categoria || 'ejercicio',
+                seEntrena: btn.dataset.seEntrena === '1',
+                seUsa: btn.dataset.seUsa === '1',
+                tipoTarea: btn.dataset.tipoTarea || 'practica',
+            });
+        });
+    });
+    pintarFotosClienteAdmin(listaEl);
     listaEl.querySelectorAll('[data-accion="notas"]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const card = btn.closest('.ejercicio-activo-card');
@@ -725,6 +730,28 @@ function renderEjercicioActivoCard(row, history = []) {
     // Ocultamos el chip para mantener la UI coherente con el cliente.
     const esTarea = (categoria === 'tarea');
     const camposJson = JSON.stringify(Array.isArray(ej.campos) ? ej.campos : []);
+
+    // ── Cómo se registra (01/09/2026) ──────────────────────────────
+    // Dos interruptores independientes + el tipo, para las tareas.
+    const seEntrena = (row.se_entrena !== false);
+    const seUsa = !!row.se_usa;
+    const tipoTarea = row.tipo_tarea || (esTarea ? 'practica' : null);
+    const _TIPO_LBL = { lista: 'Lista', montaje: 'Montaje', practica: 'Práctica' };
+    let regTxt;
+    if (!seEntrena) regTxt = 'Solo se usa';
+    else if (seUsa) regTxt = 'Entrena + usa';
+    else regTxt = 'Solo se entrena';
+    if (esTarea) regTxt = `${_TIPO_LBL[tipoTarea] || 'Práctica'} · ${regTxt}`;
+    const regChip = (categoria === 'herramienta') ? '' : `
+        <button type="button"
+                class="registro-chip${seUsa ? ' registro-chip--uso' : ''}"
+                data-accion="registro"
+                data-asignado-id="${escapeHTML(row.id)}"
+                data-categoria="${escapeHTML(categoria)}"
+                data-se-entrena="${seEntrena ? '1' : '0'}"
+                data-se-usa="${seUsa ? '1' : '0'}"
+                data-tipo-tarea="${escapeHTML(tipoTarea || '')}"
+                title="Cómo se registra">${escapeHTML(regTxt)}</button>`;
     const freqChip = esTarea ? '' : `
         <button type="button"
                 class="frecuencia-chip${vacio ? ' frecuencia-chip--vacio' : ''}"
@@ -831,25 +858,43 @@ function renderEjercicioActivoCard(row, history = []) {
         }
     }
 
-    // Para herramientas: el cliente marca si ya la tiene. Solo lectura.
+    // Fotos que subió el cliente (bucket privado). Se pintan con enlace
+    // firmado después del render, en pintarFotosClienteAdmin().
+    const fotosCli = Array.isArray(row.fotos_cliente) ? row.fotos_cliente : [];
+    const fotosHtml = fotosCli.length === 0 ? '' : `
+        <div class="fotos-cli">${fotosCli.map((path) => `
+            <a class="fotos-cli__i" data-foto-path="${escapeHTML(path)}" target="_blank" rel="noopener" title="Abrir la foto"><img alt="Foto del cliente"></a>`).join('')}
+        </div>`;
+
+    // Para herramientas y montajes: el cliente marca si ya la tiene / la montó.
+    // Solo lectura. Distinguimos "la tiene pero sin foto" para poder pedírsela.
     let herramientaEstadoHtml = '';
-    if (categoria === 'herramienta') {
+    const esMontajeAdmin = esTarea && tipoTarea === 'montaje';
+    if (categoria === 'herramienta' || esMontajeAdmin) {
+        const marcado = esMontajeAdmin
+            ? (row.estado_cliente === 'hecho')
+            : (row.estado_cliente === 'tiene');
         let clase, txt;
-        if (row.estado_cliente === 'tiene') {
+        if (marcado) {
             const desde = row.estado_actualizado_en
                 ? new Date(row.estado_actualizado_en).toLocaleDateString('es-ES')
                 : '';
-            clase = 'tiene';
-            txt = desde ? `La tiene desde el ${desde}` : 'La tiene';
+            clase = fotosCli.length > 0 ? 'tiene' : 'sin-foto';
+            const base = esMontajeAdmin ? 'Montado' : 'La tiene';
+            txt = desde ? `${base} desde el ${desde}` : base;
+            if (fotosCli.length === 0) txt += ' · sin foto';
         } else {
             clase = 'sin-marcar';
-            txt = 'Sin confirmar';
+            txt = esMontajeAdmin ? 'Sin montar' : 'Sin confirmar';
         }
         herramientaEstadoHtml = `
             <div class="herramienta-estado herramienta-estado--${clase}">
                 <span class="herramienta-estado__dot"></span>
                 <span class="herramienta-estado__txt">${escapeHTML(txt)}</span>
-            </div>`;
+            </div>
+            ${fotosHtml}`;
+    } else if (fotosCli.length > 0) {
+        herramientaEstadoHtml = fotosHtml;
     }
 
     return `
@@ -859,6 +904,7 @@ function renderEjercicioActivoCard(row, history = []) {
                     <span class="ejercicio-activo-nombre">${nombre}</span>
                     <div class="ejercicio-activo-chips">
                         ${catChip}
+                        ${regChip}
                         ${freqChip}
                         ${grupoChip}
                         ${notasChip}
@@ -1254,26 +1300,13 @@ function bindBackNavigation() {
             return;
         }
 
-        // Prioridad 2: en la pestaña Ejercicios con subtab ≠ default → volver a
-        // la subtab default. En otras pestañas la subtab no influye en el back.
-        const tabActivaAhora = document.querySelector('.tab.is-active')?.dataset.tab;
-        if (tabActivaAhora === DEFAULT_TAB && state.subtabActiva !== DEFAULT_SUBTAB) {
-            history.pushState({ pdli: 'anchor' }, '');
-            navegandoPorPopstate = true;
-            try { activarSubtab(DEFAULT_SUBTAB); } finally { navegandoPorPopstate = false; }
-            return;
-        }
-
-        // Prioridad 3: pestaña principal ≠ default → volver a la default.
-        const tabActual = document.querySelector('.tab.is-active')?.dataset.tab;
-        if (tabActual && tabActual !== DEFAULT_TAB) {
-            history.pushState({ pdli: 'anchor' }, '');
-            navegandoPorPopstate = true;
-            try { activarTab(DEFAULT_TAB); } finally { navegandoPorPopstate = false; }
-            return;
-        }
-
-        // Prioridad 4: nada abierto, pestaña default → back natural al cliente.
+        // Prioridad 2: nada abierto → back natural al cliente.
+        //
+        // Las pestañas y sub-pestañas NO consumen el botón atrás (01/09/2026).
+        // Antes lo hacían y salir desde "Ejercicios > Tareas" costaba tres
+        // toques que no movían de pantalla: se sentía como un paseo. Ahora
+        // atrás siempre significa lo mismo — cerrar lo que esté abierto, o
+        // volver una pantalla — y para cambiar de pestaña están las pestañas.
         saliendoDePerro = true;
         history.back();
     });
@@ -1285,10 +1318,14 @@ function hayUiAbierta() {
     const pau = document.getElementById('modal-pausados');
     const fre = document.getElementById('modal-frecuencia');
     const not = document.getElementById('modal-notas-ejercicio');
+    const reg = document.getElementById('selector-registro');
+    const gru = document.getElementById('selector-grupo');
     return (cat && !cat.hasAttribute('hidden'))
         || (pau && !pau.hasAttribute('hidden'))
         || (fre && !fre.hasAttribute('hidden'))
         || (not && !not.hasAttribute('hidden'))
+        || (reg && !reg.hidden)
+        || (gru && !gru.hidden)
         || state.modoReordenar === true;
 }
 
@@ -1302,6 +1339,10 @@ function cerrarUiAbierta() {
     if (pau && !pau.hasAttribute('hidden')) { cerrarSheetPausados(); return; }
     if (fre && !fre.hasAttribute('hidden')) { cerrarModalFrecuencia(); return; }
     if (not && !not.hasAttribute('hidden')) { cerrarNotasEjercicio(); return; }
+    const reg = document.getElementById('selector-registro');
+    if (reg && !reg.hidden) { reg.hidden = true; reg.innerHTML = ''; return; }
+    const gru = document.getElementById('selector-grupo');
+    if (gru && !gru.hidden) { gru.hidden = true; gru.innerHTML = ''; return; }
     if (state.modoReordenar) { salirModoReordenar(); return; }
 }
 
@@ -3074,4 +3115,153 @@ function renderProgresoAdminItem(row, rachaMap) {
             <div class="prog-admin-item__meta">${chipPrincipal}${chipHoy}${rachaHTML}</div>
         </li>
     `;
+}
+
+
+// ===================== Cómo se registra =====================
+//
+// Dos interruptores independientes por asignación:
+//   se_entrena → huella + objetivo semanal + puntitos (cuenta para la isla)
+//   se_usa     → "Anotar uso" con contador aparte (NO cuenta para la isla)
+// Y, solo en tareas, el tipo: lista | montaje | práctica.
+// Acordado con Charly el 01/09/2026.
+
+function abrirSelectorRegistro({ asignadoId, nombre, categoria, seEntrena, seUsa, tipoTarea }) {
+    let cont = document.getElementById('selector-registro');
+    if (!cont) {
+        cont = document.createElement('div');
+        cont.id = 'selector-registro';
+        cont.className = 'modal';
+        document.body.appendChild(cont);
+    }
+    const esTarea = (categoria === 'tarea');
+    const tipos = [
+        ['lista', 'Lista', 'El cliente escribe la lista y la marca como enviada.'],
+        ['montaje', 'Montaje', 'Lo prepara una vez, lo marca hecho y puede mandar fotos.'],
+        ['practica', 'Práctica', 'Se entrena una y otra vez, con huella y objetivo semanal.'],
+    ];
+    const tipoHtml = !esTarea ? '' : `
+        <fieldset class="reg-fs">
+            <legend>Tipo de tarea</legend>
+            ${tipos.map(([v, lbl, hint]) => `
+                <label class="reg-op">
+                    <input type="radio" name="reg-tipo" value="${v}" ${tipoTarea === v ? 'checked' : ''}>
+                    <span><b>${lbl}</b><small>${hint}</small></span>
+                </label>`).join('')}
+        </fieldset>`;
+
+    cont.innerHTML = `
+        <div class="modal__backdrop" data-cerrar="1"></div>
+        <div class="modal__panel">
+            <h3 class="modal__titulo">Cómo se registra</h3>
+            <p class="modal__sub">${escapeHTML(nombre)}</p>
+            ${tipoHtml}
+            <fieldset class="reg-fs">
+                <legend>Registro</legend>
+                <label class="reg-op">
+                    <input type="checkbox" id="reg-entrena" ${seEntrena ? 'checked' : ''}>
+                    <span><b>Se entrena</b><small>Huella, objetivo semanal y puntitos. Cuenta para la isla.</small></span>
+                </label>
+                <label class="reg-op">
+                    <input type="checkbox" id="reg-usa" ${seUsa ? 'checked' : ''}>
+                    <span><b>Se usa en el momento</b><small>Botón de anotar uso con contador aparte. No cuenta para la isla.</small></span>
+                </label>
+            </fieldset>
+            <p class="reg-aviso" id="reg-aviso" hidden>Tiene que estar marcado al menos uno de los dos.</p>
+            <div class="modal__acciones">
+                <button type="button" class="btn btn--ghost" data-cerrar="1">Cancelar</button>
+                <button type="button" class="btn" id="reg-guardar">Guardar</button>
+            </div>
+        </div>`;
+    cont.hidden = false;
+
+    const cerrar = () => { cont.hidden = true; cont.innerHTML = ''; };
+    cont.querySelectorAll('[data-cerrar]').forEach((el) => el.addEventListener('click', cerrar));
+
+    const chkE = cont.querySelector('#reg-entrena');
+    const chkU = cont.querySelector('#reg-usa');
+    const aviso = cont.querySelector('#reg-aviso');
+    const validar = () => {
+        const ok = chkE.checked || chkU.checked;
+        aviso.hidden = ok;
+        cont.querySelector('#reg-guardar').disabled = !ok;
+        return ok;
+    };
+    chkE.addEventListener('change', validar);
+    chkU.addEventListener('change', validar);
+    // Un montaje o una lista no se entrenan: el tipo manda sobre los checks.
+    const sincronizarPorTipo = () => {
+        const t = cont.querySelector('input[name="reg-tipo"]:checked')?.value;
+        if (t === 'lista' || t === 'montaje') {
+            chkE.checked = false; chkU.checked = false;
+            chkE.disabled = true; chkU.disabled = true;
+            aviso.hidden = true;
+            cont.querySelector('#reg-guardar').disabled = false;
+        } else {
+            chkE.disabled = false; chkU.disabled = false;
+            if (!chkE.checked && !chkU.checked) chkE.checked = true;
+            validar();
+        }
+    };
+    cont.querySelectorAll('input[name="reg-tipo"]').forEach((r) => r.addEventListener('change', sincronizarPorTipo));
+    if (esTarea) sincronizarPorTipo(); else validar();
+
+    cont.querySelector('#reg-guardar').addEventListener('click', async () => {
+        const tipo = esTarea
+            ? (cont.querySelector('input[name="reg-tipo"]:checked')?.value || 'practica')
+            : null;
+        // En lista/montaje no hay entreno ni uso, pero el constraint de la base
+        // exige al menos uno: guardamos se_entrena=true, que el cliente ignora
+        // porque el tipo tiene prioridad al pintar la tarjeta.
+        const esListaOMontaje = (tipo === 'lista' || tipo === 'montaje');
+        const payload = {
+            se_entrena: esListaOMontaje ? true : chkE.checked,
+            se_usa: esListaOMontaje ? false : chkU.checked,
+        };
+        if (esTarea) payload.tipo_tarea = tipo;
+        if (!esListaOMontaje && !payload.se_entrena && !payload.se_usa) return;
+        try {
+            const { error } = await supabase
+                .from('ejercicios_asignados')
+                .update(payload)
+                .eq('id', asignadoId);
+            if (error) throw error;
+            cerrar();
+            await renderEjerciciosActivos();
+            if (typeof toast === 'function') toast('Guardado', 'ok');
+        } catch (e) {
+            console.error('[registro] no se pudo guardar:', e);
+            if (typeof toast === 'function') toast('No se pudo guardar', 'error');
+        }
+    });
+}
+
+// ===================== Fotos del cliente (bucket privado) =====================
+
+const _fotoUrlCacheAdmin = new Map();
+
+async function pintarFotosClienteAdmin(scope) {
+    const raiz = scope || document;
+    const nodos = raiz.querySelectorAll('.fotos-cli__i[data-foto-path]');
+    for (const a of nodos) {
+        const path = a.dataset.fotoPath;
+        if (!path || a.dataset.listo) continue;
+        try {
+            let url = _fotoUrlCacheAdmin.get(path);
+            if (!url) {
+                const { data, error } = await supabase.storage
+                    .from('fotos-cliente')
+                    .createSignedUrl(path, 3600);
+                if (error || !data?.signedUrl) continue;
+                url = data.signedUrl;
+                _fotoUrlCacheAdmin.set(path, url);
+            }
+            const img = a.querySelector('img');
+            if (img) img.src = url;
+            a.href = url;
+            a.dataset.listo = '1';
+        } catch (e) {
+            console.error('[fotos-cli] no se pudo firmar la URL:', e);
+        }
+    }
 }
