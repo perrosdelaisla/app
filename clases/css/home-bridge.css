@@ -331,6 +331,153 @@
     position:absolute; right:-10px; bottom:-10px; width:28px; height:28px;
     border:2px solid var(--c-surface, #211E16);
 }
-/* En la burbuja de aviso: arriba a la derecha, junto al cerrar */
-.jaime-burbuja__speak{ position:absolute; top:8px; right:38px; }
+/* En la burbuja de aviso: el altavoz va en una franja superior, a la izquierda
+   del botón cerrar. Cuando está visible, el texto baja una fila para no quedar
+   tapado (si no hay voz disponible el botón queda hidden y no sobra hueco). */
+.jaime-burbuja__speak{ position:absolute; top:9px; right:40px; }
+.jaime-burbuja__speak:not([hidden]) ~ .jaime-burbuja__texto{ margin-top:24px; }
 @media (prefers-reduced-motion: reduce){ .jaime-speak--playing{ animation:none; } }
+
+/* ════════════════════════════════════════════════════════════
+   Rediseño de la portada — jerarquía + sistema unificado. 31/08/2026
+   Solo reordena y unifica el envoltorio; no toca ninguna lógica.
+   ════════════════════════════════════════════════════════════ */
+/* Título de sección: barrita oliva + rótulo Bebas. Da un ritmo común. */
+.home .stitle{ display:flex; align-items:center; gap:9px; margin:22px 2px 12px; }
+.home .stitle__bar{ flex:none; width:4px; height:15px; border-radius:2px; background:var(--c-oliva); }
+.home .stitle h3{
+    margin:0; font-family:var(--display,'Bebas Neue'); font-size:16px; letter-spacing:1.3px;
+    color:var(--c-text-2); text-transform:uppercase;
+}
+/* "Más para ti": los accesos secundarios apilados con el mismo espaciado. */
+.home .mas-sec{ margin-top:4px; }
+.home .mas-card{ display:flex; flex-direction:column; gap:10px; }
+.home .mas-card > [hidden]{ display:none; }
+/* Que Seguimiento (.seg-entry) y Bienestar (.health) compartan exactamente
+   el mismo formato de fila-tarjeta, para que no se sientan piezas sueltas. */
+.home .mas-card .seg-entry,
+.home .mas-card .health{ width:100%; margin:0; }
+/* La filosofía, ahora al pie como cierre discreto. */
+.home .philo--foot{ margin-top:22px; }
+/* La isla ya vive arriba de las subpestañas: un respiro bajo ella. */
+.home #rutina-vista > .isla-semana{ margin:2px 0 14px; }
+
+/* ════════════════════════════════════════════════════════════
+   Mi progreso — isla GLOBAL + línea de constancia. 01/09/2026
+   ════════════════════════════════════════════════════════════ */
+/* Subtítulo e hito de la isla global (el recorrido completo del plan). */
+.home .isla-global__sub{
+    font-size:11px; font-weight:600; letter-spacing:.2px;
+    color:var(--c-oliva); margin:-1px 0 4px; text-align:center;
+}
+.home .isla-global__hito{
+    font-family:var(--body); font-size:11px; font-weight:700; letter-spacing:.4px;
+    text-transform:uppercase; color:var(--c-text-3); margin:6px 0 2px; text-align:center;
+}
+/* El camino: la isla florece por el ENTRENO; el avance va por CLASES. 01/09/2026 */
+.home .camino-isla-cap{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    font-size:11px; font-weight:600; color:var(--c-text-2); margin:8px 0 0; text-align:center;
+}
+.home .camino-isla-cap b{ color:var(--c-oliva); font-weight:700; }
+.home .camino-clase{
+    margin-top:13px; padding-top:13px; border-top:1px solid var(--c-hair);
+}
+.home .camino-clase__head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:10px;
+}
+.home .camino-clase__big{
+    font-family:var(--display, 'Bebas Neue'); font-size:23px; letter-spacing:.6px; color:var(--c-text); line-height:1;
+}
+.home .camino-clase__big b{ color:var(--c-oliva); }
+.home .camino-clase__pct{ font-size:11px; font-weight:700; color:var(--c-text-3); white-space:nowrap; }
+.home .camino-clase__dots{ display:flex; flex-wrap:wrap; gap:7px; }
+.home .camino-dot{
+    width:20px; height:20px; border-radius:50%; border:2px solid var(--c-hair-2);
+    display:grid; place-items:center; font-size:9px; font-weight:800; color:var(--c-text-3); flex:0 0 auto;
+}
+.home .camino-dot--done{ background:var(--c-oliva); border-color:var(--c-oliva); color:#F5EFE0; }
+.home .camino-dot--next{ border-color:var(--c-oliva); border-style:dashed; color:var(--c-oliva); }
+.home .camino-clase__cap{
+    font-size:11px; color:var(--c-text-3); margin:9px 0 0; display:flex; align-items:center; gap:6px;
+}
+/* Línea de constancia (sparkline legible) — reemplaza las barritas por semana. */
+.home .progreso-spark{ position:relative; margin-top:11px; }
+.home .progreso-spark svg{ width:100%; height:auto; display:block; overflow:visible; }
+.home .progreso-spark__meta{ stroke:var(--c-hair-2, #8A867E); stroke-width:1; stroke-dasharray:3 3; opacity:.7; }
+.home .progreso-spark__area{ fill:var(--c-oliva-soft, rgba(107,122,58,.14)); }
+.home .progreso-spark__line{ fill:none; stroke:var(--c-oliva, #6B7A3A); stroke-width:2.4; stroke-linejoin:round; stroke-linecap:round; }
+.home .progreso-spark__lbl{
+    position:absolute; top:-3px; right:2px; font-size:8px; font-weight:700; letter-spacing:.5px;
+    text-transform:uppercase; color:var(--c-text-3); background:var(--c-surface); padding:0 3px;
+}
+/* Color de punto/halo por estado (fill/stroke = currentColor). */
+.home .progreso-spark .pk--verde{ color:var(--c-oliva, #6B7A3A); }
+.home .progreso-spark .pk--rojo{ color:var(--c-rojo, #C8102E); }
+.home .progreso-spark .pk--azul{ color:#3F6FD0; }
+.home .progreso-spark .pk--sin{ color:var(--c-hair-2, #8A867E); }
+.home .progreso-spark .pk-halo{ opacity:.45; stroke-width:1.6; }
+
+/* ════════════════════════════════════════════════════════════
+   Hero: legible sobre CUALQUIER foto + controles despejados.
+   Pedido de Charly (01/09/2026). Solo visual/estructura del hero.
+   ════════════════════════════════════════════════════════════ */
+/* 1) Velo (scrim) reforzado: nunca transparente en la mitad baja del texto. */
+.home .dBp .cover .scrim{
+    background:linear-gradient(180deg,
+        rgba(8,7,5,0.55) 0%,
+        rgba(8,7,5,0.18) 22%,
+        rgba(8,7,5,0.34) 48%,
+        rgba(8,7,5,0.72) 74%,
+        rgba(8,7,5,0.95) 100%);
+}
+/* 2) Refuerzo local detrás del bloque de nombre/saludo: salva las fotos claras. */
+.home .dBp .cover .cbot::before{
+    content:""; position:absolute; left:0; right:0; bottom:0; top:-26px;
+    background:linear-gradient(180deg, transparent 0%, rgba(8,7,5,.28) 42%, rgba(8,7,5,.60) 100%);
+    pointer-events:none; z-index:-1;
+}
+/* 3) Doble sombra de texto: contorno oscuro en cada letra (claro y oscuro). */
+.home .dBp .cover .cbot .hi,
+.home .dBp .cover .cbot .br{
+    text-shadow:0 1px 2px rgba(6,5,3,.9), 0 0 10px rgba(6,5,3,.55);
+    color:rgba(245,239,224,.96);
+}
+.home .dBp .cover .cbot .hi .edit{ color:rgba(245,239,224,.82); }
+.home .dBp .cover .cbot .slogan{
+    text-shadow:0 1px 2px rgba(6,5,3,.9), 0 0 10px rgba(6,5,3,.55);
+    color:rgba(245,239,224,.94);
+}
+.home .dBp .cover .cbot .nm{
+    text-shadow:0 2px 6px rgba(6,5,3,.75), 0 1px 2px rgba(6,5,3,.9);
+}
+
+/* 4) Menú del avatar: ítems con icono + etiqueta (tema/editar viven acá).
+   El cover recorta con overflow:hidden y cortaría el 4º ítem del menú; como la
+   foto ya queda contenida por su object-fit, dejamos que el cover desborde para
+   que el menú (dropdown) se vea completo. Cuando está cerrado no desborda nada. */
+.home .dBp .cover{ overflow:visible; }
+.home .dBp .cover .avatar-menu{ min-width:196px; padding:5px; }
+.home .dBp .cover .avatar-menu__item{
+    display:flex; align-items:center; gap:11px; width:100%; padding:9px 11px;
+}
+.home .dBp .cover .avatar-menu__item svg{ width:17px; height:17px; flex:0 0 auto; }
+/* El toggle de tema tiene dos íconos (luna/sol); el JS oculta el que no toca.
+   Blindamos el [hidden] por si alguna regla de svg intentara mostrarlo igual. */
+.home .dBp .cover .avatar-menu__item svg[hidden]{ display:none; }
+.home .dBp .cover .avatar-menu__item .avatar-menu__lbl{ flex:1; min-width:0; }
+/* El toggle de tema muestra luna U sol según el tema; ambos como icono del ítem. */
+.home .dBp .cover .avatar-menu__item#theme-toggle{ color:var(--c-text); }
+
+/* 4b) Logo de Perros de la Isla un poco más grande (pedido de Charly), con un
+   halo sutil para que se apoye sobre cualquier foto sin ensuciarse. */
+.home .dBp .cover .ctop .logo{
+    width:40px; height:40px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.35);
+}
+
+/* 5) Selector de perros con FOTO (la inicial queda de fallback debajo). */
+.home .dBp .cover .dogsel .av{ position:relative; overflow:hidden; }
+.home .dBp .cover .dogsel .av__foto{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:inherit;
+}

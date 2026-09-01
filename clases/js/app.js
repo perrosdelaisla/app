@@ -297,14 +297,8 @@ function initTemaHome() {
     let t = 'claro';
     try { t = localStorage.getItem(PDLI_THEME_KEY) || 'claro'; } catch (e) {}
     aplicarTemaHome(t);
-    const tg = document.getElementById('theme-toggle');
-    if (tg && !tg.dataset.bound) {
-        tg.dataset.bound = '1';
-        tg.addEventListener('click', () => {
-            const cur = document.getElementById('screen-app').getAttribute('data-theme');
-            aplicarTemaHome(cur === 'oscuro' ? 'claro' : 'oscuro');
-        });
-    }
+    // El toggle de tema ahora es un ítem del menú del avatar: su click lo maneja
+    // ejecutarItemAvatar('theme-toggle'). No lo enganchamos acá para no duplicar.
     const wd = document.getElementById('work-day');
     if (wd) {
         let s = new Date().toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -419,7 +413,8 @@ function bindEventos() {
     // barra, y vuelta a la Manada desde la rutina clásica del veterano.
     document.getElementById('hero-categoria-chip')?.addEventListener('click', abrirModalCategoria);
     document.getElementById('hero-badge-veterano')?.addEventListener('click', abrirModalCategoria);
-    document.getElementById('hero-editar-manada')?.addEventListener('click', abrirModalEditarMisDatos);
+    // #hero-editar-manada ahora es ítem del menú del avatar → lo maneja
+    // ejecutarItemAvatar('hero-editar-manada'). Sin binding directo (evita doble).
     document.getElementById('rutina-volver-manada')?.addEventListener('click', volverAManada);
 
     // Manada: un ÚNICO handler DELEGADO para tarjetas, chips de perro y sus
@@ -921,6 +916,16 @@ function cerrarMenuAvatar() {
 function ejecutarItemAvatar(id) {
     if (id === 'familia-btn') abrirModalFamilia();
     else if (id === 'logout-btn') cerrarSesion();
+    // Tema y "editar mis datos" ahora viven dentro del menú del avatar
+    // (hero despejado). Se manejan acá para no duplicar con bindings directos.
+    else if (id === 'theme-toggle') {
+        const cur = document.getElementById('screen-app')?.getAttribute('data-theme');
+        aplicarTemaHome(cur === 'oscuro' ? 'claro' : 'oscuro');
+        // No cerramos el menú: deja alternar y ver el cambio al toque.
+    }
+    else if (id === 'hero-editar-manada') { cerrarMenuAvatar(); abrirModalEditarMisDatos(); }
+    // "Ver el tutorial" (lo monta tutorial.js dentro del menú): abre el tour.
+    else if (id === 'btn-tutorial') { cerrarMenuAvatar(); window.PdliTour?.abrir?.(0); }
 }
 
 // ===================== Mi familia (cliente principal) =====================
@@ -3099,12 +3104,16 @@ function renderSelectorPerros() {
         const active = p.id === state.perroSeleccionadoId;
         const nombre = p.nombre || 'Perro';
         const ini = escapeHTML(nombre.trim().charAt(0).toUpperCase() || 'P');
+        // Foto del perro en el chip (si tiene). La inicial queda de fallback debajo.
+        const foto = p.foto_url
+            ? `<img class="av__foto" src="${escapeHTML(p.foto_url)}" alt="" aria-hidden="true">`
+            : '';
         return `
             <button type="button" class="av${active ? ' is-active' : ''}"
                     data-perro-id="${escapeHTML(p.id)}"
                     aria-pressed="${active ? 'true' : 'false'}"
                     aria-label="${escapeHTML(nombre)}" title="${escapeHTML(nombre)}">
-                <span class="ini" aria-hidden="true">${ini}</span>
+                <span class="ini" aria-hidden="true">${ini}</span>${foto}
             </button>
         `;
     }).join('');
@@ -4564,10 +4573,93 @@ async function cargarVistaProgreso() {
     aplicarAmbientalAnillo();
 }
 
-// "Mi progreso" ahora muestra la MISMA isla que Rutina (antes: anillo viejo
-// "N/M cumplidos", que apenas se movía). Misma escena, contenedor propio.
+// ── "El camino" (Mi progreso): el recorrido del PROTOCOLO. Pedido de Charly
+//    (01/09/2026). Dos ejes distintos, conectados:
+//      · AVANCE  = CLASES realizadas / N  → "Clase X de N" + puntitos. Avanza
+//        solo cuando se marca una clase como realizada (no con el calendario).
+//      · FLORACIÓN de la isla = ESFUERZO (constancia de entrenamiento). La isla
+//        florece con los entrenos, pase lo que pase con las clases.
+//    N (clases del protocolo más largo): educación 8 / conducta 12 por defecto,
+//    ampliable por caso desde el admin (perros.clases_meta).
+const _CLASES_PROTOCOLO = {
+    educacion_basica: 8, educacion_cachorro: 8,
+    gestion_ansiedad: 12, reactividad_impulsividad: 12, proteccion_recursos: 12,
+    depresion: 12, celos: 12, conflictividad_peleas: 12, miedos_fobias: 12,
+};
+const _CLASES_DEFAULT = 12;
+function metaClasesPerro(perro) {
+    // Override manual por caso (admin) tiene prioridad.
+    if (perro?.clases_meta != null && perro.clases_meta > 0) return perro.clases_meta;
+    const protos = [perro?.protocolo_principal, ...((perro?.protocolos_complementarios) || [])]
+        .filter(Boolean);
+    if (protos.length === 0) return _CLASES_DEFAULT;
+    return Math.max(...protos.map((p) => _CLASES_PROTOCOLO[p] ?? _CLASES_DEFAULT));
+}
+function calcularIslaGlobal() {
+    // Esfuerzo (para la floración de la isla): constancia acumulada = de todo lo
+    // que debería haber entrenado hasta ahora, cuánto entrenó realmente.
+    const rows = [..._progresoCache.values()]
+        .filter((r) => r.min_semanal != null && r.min_semanal > 0);
+    const objetivoSemanal = rows.reduce((a, r) => a + r.min_semanal, 0);
+    let hechosCap = 0, semanasElapsed = 0;
+    rows.forEach((r) => {
+        const hist = _historialCache.get(r.ejercicio_asignado_id) || [];
+        if (hist.length > semanasElapsed) semanasElapsed = hist.length;
+        hist.forEach((s) => { hechosCap += Math.min(Number(s.count || 0), r.min_semanal); });
+    });
+    const objetivoEsfuerzo = objetivoSemanal * Math.max(semanasElapsed, 1);
+    const effortPct = objetivoEsfuerzo > 0 ? Math.min(hechosCap / objetivoEsfuerzo, 1) : 0;
+    // Avance del protocolo (para "Clase X de N"): clases marcadas como realizada.
+    const perro = state.perros.find((p) => p.id === state.perroSeleccionadoId);
+    const N = metaClasesPerro(perro);
+    const X = (state.citas || []).filter((c) => c.estado === 'realizada').length;
+    const Xc = Math.min(X, N);
+    const classPct = N > 0 ? Math.min(X / N, 1) : 0;
+    return { effortPct, X, Xc, N, classPct, hayEjercicios: objetivoSemanal > 0 };
+}
+function renderIslaGlobal() {
+    const prefix = 'isla-progreso';
+    const box = document.getElementById(prefix);
+    if (!box) return;
+    const g = calcularIslaGlobal();
+    // Se muestra si hay algo real que contar: ejercicios para la isla o clases.
+    if (!g.hayEjercicios && g.X === 0) { box.setAttribute('hidden', ''); return; }
+    box.removeAttribute('hidden');
+    const perro = state.perros.find((p) => p.id === state.perroSeleccionadoId);
+    const nombre = perro?.nombre || 'tu perro';
+    setText(`${prefix}-perro`, nombre);
+    setText(`${prefix}-perro2`, nombre);
+    // La isla FLORECE con el esfuerzo (constancia). t = effortPct; sin extras.
+    _islaPintarEscena(0, 1, g.effortPct, `${prefix}-svg`);
+    // Avance por CLASES.
+    setText(`${prefix}-clase-x`, String(g.X));
+    setText(`${prefix}-clase-n`, String(g.N));
+    setText(`${prefix}-pct`, String(Math.round(g.classPct * 100)));
+    const dots = document.getElementById(`${prefix}-dots`);
+    if (dots) {
+        let h = '';
+        for (let i = 1; i <= g.N; i++) {
+            const done = i <= g.Xc;
+            const next = (i === g.Xc + 1);
+            h += `<span class="camino-dot${done ? ' camino-dot--done' : next ? ' camino-dot--next' : ''}">${done ? '✓' : i}</span>`;
+        }
+        dots.innerHTML = h;
+    }
+    // Racha de constancia (entreno), igual que la isla de la semana.
+    const racha = _islaRacha(calcularIslaSemana().pct);
+    const rachaEl = document.getElementById(`${prefix}-racha`);
+    if (rachaEl) {
+        if (racha >= 1) {
+            setText(`${prefix}-racha-n`, racha === 1 ? '1 semana' : `${racha} semanas`);
+            rachaEl.removeAttribute('hidden');
+        } else {
+            rachaEl.setAttribute('hidden', '');
+        }
+    }
+}
+// "Mi progreso" muestra la isla GLOBAL (todo el plan), no la de la semana.
 function renderAnilloProgreso() {
-    renderIsla('isla-progreso');
+    renderIslaGlobal();
 }
 
 function renderListaProgreso() {
@@ -4760,17 +4852,43 @@ function renderMedallero(d) {
 
 // Fila de barritas: una por semana desde la asignación, color por estado
 // (mismo criterio que el chip). Scrolleable si son muchas semanas.
+// Línea de constancia (sparkline legible). Cada punto es una semana desde la
+// asignación; la altura es el cumplimiento (0–100% del objetivo semanal), el
+// color el estado (verde/rojo/azul), y una línea punteada marca el objetivo.
+// La semana en curso va resaltada. Rediseño pedido por Charly (01/09/2026).
 function renderHistorialSemanal(asignadoId) {
     const semanas = _historialCache.get(asignadoId);
     if (!semanas || semanas.length === 0) return '';
-    const barras = semanas.map((s) => {
-        const color = COLOR_CHIP_FRECUENCIA[s.estado] || 'sin';
-        const actual = s.actual ? ' progreso-semana--actual' : '';
-        const veces = s.count === 1 ? 'vez' : 'veces';
-        const titulo = `Semana ${s.idx + 1}: ${s.count} ${veces}${s.actual ? ' (en curso)' : ''}`;
-        return `<span class="progreso-semana progreso-semana--${color}${actual}" title="${escapeHTML(titulo)}"><span class="progreso-semana__fill" style="height:${s.pct}%"></span></span>`;
+    const vis = semanas.slice(-12); // últimas 12 semanas: tendencia legible
+    const W = 300, H = 54, metaY = 10, baseY = H - 16;
+    const n = vis.length;
+    const step = n > 1 ? W / (n - 1) : 0;
+    const pts = vis.map((s, i) => {
+        const x = n > 1 ? i * step : W / 2;
+        const y = baseY - (Math.min(Number(s.pct || 0), 100) / 100) * (baseY - metaY);
+        return { x, y, s };
+    });
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    const area = `${d} L${W} ${baseY} L0 ${baseY} Z`;
+    const dots = pts.map((p) => {
+        const est = COLOR_CHIP_FRECUENCIA[p.s.estado] || 'sin';
+        const now = p.s.actual;
+        const veces = p.s.count === 1 ? 'vez' : 'veces';
+        const titulo = `Semana ${p.s.idx + 1}: ${p.s.count} ${veces}${now ? ' (en curso)' : ''}`;
+        const halo = now
+            ? `<circle class="pk-halo pk--${est}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="none" stroke="currentColor"/>`
+            : '';
+        return `${halo}<circle class="pk-dot pk--${est}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${now ? 4.6 : 2.8}" fill="currentColor"><title>${escapeHTML(titulo)}</title></circle>`;
     }).join('');
-    return `<div class="progreso-historial" aria-label="Historial por semana">${barras}</div>`;
+    return `<div class="progreso-spark" aria-label="Constancia semana a semana">
+            <svg viewBox="0 0 ${W} ${H}" role="img">
+              <line class="progreso-spark__meta" x1="0" y1="${metaY}" x2="${W}" y2="${metaY}"/>
+              <path class="progreso-spark__area" d="${area}"/>
+              <path class="progreso-spark__line" d="${d}"/>
+              ${dots}
+            </svg>
+            <span class="progreso-spark__lbl">objetivo</span>
+        </div>`;
 }
 
 function renderProgresoItem(row) {
